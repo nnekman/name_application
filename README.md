@@ -14,4 +14,4 @@ Dash is running on http://127.0.0.1:8050/
 
 Please, copy the given address to the Internet Browser of your choice.
 
-Select 'Upload JSON file' on the upper left corner, and select the attached dataset 'names.json'.
+Select 'Upload JSON file' on the upper right corner, and select the attached dataset 'names.json'.
