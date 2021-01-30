@@ -2,9 +2,9 @@
 
 Name application done with Python Dash. Please, run in command line
 
-"""
+```bash
 python name_api.py
-"""
+```
 
 after which it will say something like
 
