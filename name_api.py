@@ -10,6 +10,7 @@ import dash
 import dash_table
 import pandas as pd
 import json
+import urllib
 
 import dash
 import dash_html_components as html
@@ -48,7 +49,6 @@ def order_table(name,word):
         ordered_df=df.sort_values('amount',ascending=False)
         print(ordered_df) 
     return ordered_df.to_json(orient='split')
-
 
 # %% ---------------------------------------------------------------------------------------------------------
 # %% Style sheet (dark is nice)
@@ -89,13 +89,16 @@ table_collapse_div = html.Div(children=table_collapse_children, id='data_table_c
 
 # %% Buttons
 
-amount_names_label =  dbc.Button('Total amount of names: 0',id='names_label', color='success', size='sm',style={'visibility':'hidden'},block=True,disabled=True)
+download_button = dbc.Col(dbc.Button('Download table in csv file',id='download_button', color='primary',style={'visibility':'hidden'},disabled=True,outline=True, size='sm'),width=2)
+download_link = dbc.Col(html.A(download_button,id='download_link',download="name_data.csv",href="",target="_blank",style={'text-decoration':'none'}))
 
-label_button = dbc.Button('Order the table:',id='label_button', color='primary', size='md',style={'visibility':'hidden'},block=True,disabled=True)
+amount_names_label =  dbc.Button('Total amount of names: 0',id='names_label', color='transparent', size='md',style={'visibility':'hidden'},block=True,disabled=True)
 
-default_button =  dbc.Col(dbc.Button('Default',id='default_button', color='primary', size='md',style={'visibility':'hidden'},block=True),width=4)
-abc_button =  dbc.Col(dbc.Button('Alphabetical',id='abc_button', color='primary', size='md',style={'visibility':'hidden'},block=True),width=4)
-amount_button =  dbc.Col(dbc.Button('Amount',id='amount_button', color='primary', size='md',style={'visibility':'hidden'},block=True),width=4)
+label_button = dbc.Button('Order the table:',id='label_button', color='transparent', size='lg',style={'visibility':'hidden'},block=True,disabled=True)
+
+default_button =  dbc.Col(dbc.Button('Default',id='default_button', color='success', size='md',style={'visibility':'hidden'},block=True),width=4)
+abc_button =  dbc.Col(dbc.Button('Alphabetical',id='abc_button', color='success', size='md',style={'visibility':'hidden'},block=True),width=4)
+amount_button =  dbc.Col(dbc.Button('Amount',id='amount_button', color='success', size='md',style={'visibility':'hidden'},block=True),width=4)
 
 button_row = dbc.Row(children = [default_button,abc_button,amount_button],className="ml-auto flex-nowrap mt-3 mt-md-0",align="center")
 
@@ -107,12 +110,12 @@ error_message = dbc.Alert("Your data type is not correct!", id='error_message', 
 separator = html.Div(style={'padding': 5})
 
 common_table_row = dbc.Row(dbc.Col(dcc.Loading([table_collapse_div],type='circle')),id='table_row',style={'visibility':'visible'})
-common_elements = [common_table_row,separator,amount_names_label,separator,label_button,separator,button_row]
+common_elements = [common_table_row,separator,amount_names_label,download_link,separator,label_button,separator,button_row]
 common_layout = dbc.Container(common_elements,fluid = False, style={'padding': 20})
 
 # %% global params
 
-ids = ['df_full','df_order','names_amount']
+ids = ['df_full','df_order','names_amount','download_data']
 common_globals=[html.Div(id=i,style={'display':'none'}) for i in ids]
 global_data = dbc.Container(common_globals)
 
@@ -143,10 +146,10 @@ def table_collapse_button_label(is_open):
 
 # %% Upload file 
 
-o_styles=['table_row','names_label','label_button','abc_button','default_button','amount_button']
+o_styles=['table_row','names_label','label_button','abc_button','default_button','amount_button','download_button']
 outputs=[Output(i,'style') for i in o_styles]
 outputs.extend([Output(i,'children') for i in ['df_full','names_amount','names_label']])
-outputs.extend([Output('error_message','is_open')])
+outputs.extend([Output('error_message','is_open'),Output('download_button','disabled')])
 
 @app.callback(
     outputs,
@@ -157,7 +160,7 @@ def upload_inputfile(file_content, file_name):
    
     if not ctx.triggered:
         style={'visibility':'hidden'}
-        return style,style,style,style,style,style,None,0,'Total amount of names: 0',False
+        return style,style,style,style,style,style,style,None,0,'Total amount of names: 0',False,True
     else:
         input_id = ctx.triggered[0]["prop_id"].split(".")[0]
 
@@ -212,8 +215,9 @@ def upload_inputfile(file_content, file_name):
             label_style=style
             names_total=0
             error = False
+        download=False if names_total>0 else True
     
-    return style,label_style,label_style,style,style,style,df_json,names_total,['Total amount of names: ',names_total],error
+    return style,label_style,label_style,style,style,style,style,df_json,names_total,['Total amount of names: ',names_total],error,download
 
 # %% Order buttons
 
@@ -252,7 +256,21 @@ def table_update(df,ordered_df):
         data=pd.read_json(df,orient='split')
         return update_table(data)
     return None
-     
+
+# %% Download table in csv file 
+ 
+@app.callback(
+    Output('download_link', 'href'),
+    #[Input('download_data','children')],
+    [Input('df_order','children'),Input('df_full','children')])
+def download_link(df_order,df_full):
+    print('download_file fired')
+    df=pd.read_json(df_full,orient='split') if df_full is not None else pd.DataFrame()
+    df=pd.read_json(df_order,orient='split') if df_order is not None else df
+    csv_string = df.to_csv(index=False, encoding='utf-8')
+    csv_string = "data:text/csv;charset=utf-8," + urllib.parse.quote(csv_string)
+    return csv_string
+
 
 # %% ---------------------------------------------------------------------------------------------------------
 # %%
